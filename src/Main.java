@@ -1,6 +1,5 @@
 import org.antlr.v4.runtime.*;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 
 public class Main {
@@ -11,30 +10,66 @@ public class Main {
         do{
             try {
                 var reader = new BufferedReader(new InputStreamReader(System.in));
-                var errorListener = new DefaultErrorListener();
-
                 var lexer = new ArithmeticLexer(CharStreams.fromString(reader.readLine()));
-                lexer.removeErrorListeners();
-                lexer.addErrorListener(errorListener);
-
                 var parser = new ArithmeticParser(new CommonTokenStream(lexer));
+
                 parser.removeErrorListeners();
-                parser.addErrorListener(errorListener);
+                parser.addErrorListener(new DefaultErrorListener());
 
-                //Teste
-                //System.out.println(parser.operation().getText());
+                //Código de teste
+                var expressionContext = parser.expression();
 
-                // Tentar o acesso ao driver...
+                var expr = getExpression(expressionContext);
+                System.out.println(expr);
+
 
                 // Deve ser sempre a ultima coisa a ser feita
                 flag = false;
             } catch (RecognitionException e){
                 System.out.println("Incorrect input!");
-            } catch (IOException e){
+            } catch (Exception e){
                 System.out.println("Failed to read input!");
                 break;
             }
         }while(flag);
+    }
+
+    // Só pra teste
+    private static Expression getExpression (ArithmeticParser.ExpressionContext expr) {
+        var numberExpressionList = expr.numberExpression();
+
+        String fOp, sOp, op;
+
+        fOp = expr.numberExpression(0).getText();
+
+        op = expr.operation().getText();
+
+        if(expr.NUMBER() != null)
+            sOp = expr.NUMBER().getText();
+        else
+            sOp = numberExpressionList.get(1).getText();
+
+        return new Expression(fOp,sOp, op);
+    }
+}
+
+// Só pra teste
+class Expression{
+    public final String firstOperand, secondOperand, operation;
+
+    Expression(String firstOperand, String secondOperand, String operation) {
+        this.firstOperand = firstOperand;
+        this.secondOperand = secondOperand;
+        this.operation = operation;
+    }
+
+    @Override
+    public String toString() {
+        return "Expression{" +
+                "firstOperand='" + firstOperand + '\'' +
+                ", secondOperand='" + secondOperand + '\'' +
+                ", operation='" + operation + '\'' +
+                '}';
     }
 }
 

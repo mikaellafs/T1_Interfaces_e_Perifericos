@@ -2,11 +2,24 @@ grammar Arithmetic;
 
 // ----- Parser Rules -----------
 
+expression:
+		numberExpression operation NUMBER
+	|	numberExpression operation '(' numberExpression ')'
+	|	'(' numberExpression ')' operation NUMBER
+	|	'(' numberExpression ')' operation '(' numberExpression ')'
+	;
+
 operation:
-		NUMBER '+' NUMBER
-	|	NUMBER '-' NUMBER
-	|	NUMBER '*' NUMBER
-	|	NUMBER '/' NUMBER
+		PLUS
+	|	MINUS
+	|	TIMES
+	|	OVER
+	;
+
+numberExpression:
+		NUMBER
+	|	PLUS NUMBER
+	|	MINUS NUMBER
 	;
 
 // ----- Lexer Rules ------------
@@ -16,9 +29,26 @@ DIGIT:
 		'0' .. '9'
 	;
 
+// Se não me engano tem um paranaue do antlr pra retirar
+// possiveis 0's excedentes...
 NUMBER:
 		DIGIT+
-	// |	DIGIT+ '.' DIGIT+
+	;
+
+PLUS:
+		'+'
+	;
+
+MINUS:
+		'-'
+	;
+
+TIMES:
+		'*'
+	;
+
+OVER:
+		'/'
 	;
 
 WS:
