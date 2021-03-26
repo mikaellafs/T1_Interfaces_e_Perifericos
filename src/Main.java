@@ -1,6 +1,9 @@
 import org.antlr.v4.runtime.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import Arithmetic.ArithmeticLexer;
+import Arithmetic.ArithmeticParser;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
 public class Main {
     public static void main(String[] args) {
@@ -14,18 +17,20 @@ public class Main {
                 var parser = new ArithmeticParser(new CommonTokenStream(lexer));
 
                 parser.removeErrorListeners();
-                parser.addErrorListener(new DefaultErrorListener());
+                parser.setErrorHandler(new BailErrorStrategy());
 
-                //Código de teste
+                // Código de teste
                 var expressionContext = parser.expression();
 
                 var expr = getExpression(expressionContext);
                 System.out.println(expr);
 
+                // Pra testar a concorrencia da pra pedir uma confirmação aqui.
+                // Tipo pedir pra pressionar enter...
 
                 // Deve ser sempre a ultima coisa a ser feita
                 flag = false;
-            } catch (RecognitionException e){
+            } catch (ParseCancellationException e){
                 System.out.println("Incorrect input!");
             } catch (Exception e){
                 System.out.println("Failed to read input!");
@@ -70,16 +75,5 @@ class Expression{
                 ", secondOperand='" + secondOperand + '\'' +
                 ", operation='" + operation + '\'' +
                 '}';
-    }
-}
-
-class DefaultErrorListener extends BaseErrorListener{
-    @Override
-    public void syntaxError(Recognizer<?, ?> recognizer,
-                            Object offendingSymbol, int line,
-                            int charPositionInLine, String msg,
-                            RecognitionException e) {
-        // Poderia fazer algo aqui, mas não sei se precisa...
-        throw e;
     }
 }

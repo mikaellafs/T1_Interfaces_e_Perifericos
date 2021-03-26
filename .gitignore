@@ -21,3 +21,16 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+
+src/Classes
+src/Arithmetic
+
+# Driver files
+driver_src/*
+.modules.order.cmd
+.Module.symvers.cmd
+Module.symvers
+modules.order
+
+# Forcing upload of the driver module code
+!driver_src/mycalc.c
