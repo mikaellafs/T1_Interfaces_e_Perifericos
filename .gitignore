@@ -26,7 +26,9 @@ src/Classes
 src/Arithmetic
 
 # Driver files
-driver_src/*
+driver_src/*.ko*
+driver_src/*.mod*
+driver_src/*.o*
 .modules.order.cmd
 .Module.symvers.cmd
 Module.symvers
