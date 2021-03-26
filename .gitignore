@@ -29,10 +29,5 @@ src/Arithmetic
 driver_src/*.ko*
 driver_src/*.mod*
 driver_src/*.o*
-.modules.order.cmd
-.Module.symvers.cmd
-Module.symvers
-modules.order
-
-# Forcing upload of the driver module code
-!driver_src/mycalc.c
+*.order*
+*.symvers*
