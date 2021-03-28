@@ -6,7 +6,6 @@
 #include <linux/uaccess.h>			// Required for the copy to user function
 #include <linux/mutex.h>			// Required for the mutex functionality
 #include <linux/ctype.h>			// Help handling input
-#include <linux/types.h>			// Required to get type int32_t
 
 #define  DEVICE_NAME "mycalc"		// The device will appear at /dev/mycalc using this value
 #define  CLASS_NAME  "char"			// The device class -- this is a character device driver
@@ -142,10 +141,10 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 }
 
 static void get_result(){
-	int32_t fOp, sOp, result;
+	int fOp, sOp, result;
 
-	kstrtos32(firstOperand, 10, &fOp);
-	kstrtos32(secondOperand, 10, &sOp);
+	kstrtosint(firstOperand, 10, &fOp);
+	kstrtosint(secondOperand, 10, &sOp);
 
 	switch(op){
 		case '+':
