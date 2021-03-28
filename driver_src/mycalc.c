@@ -5,6 +5,8 @@
 #include <linux/fs.h>				// Header for the Linux file system support
 #include <linux/uaccess.h>			// Required for the copy to user function
 #include <linux/mutex.h>			// Required for the mutex functionality
+#include <linux/ctype.h>			// Help handling input
+#include <linux/types.h>			// Required to get type int32_t
 
 #define  DEVICE_NAME "mycalc"		// The device will appear at /dev/mycalc using this value
 #define  CLASS_NAME  "char"			// The device class -- this is a character device driver
@@ -14,9 +16,14 @@ MODULE_LICENSE("GPL");              // The license type -- this affects availabl
 MODULE_DESCRIPTION("A simple Linux char driver calculator module");  // The description -- see modinfo
 MODULE_VERSION("0.1");              // A version number to inform users
 
+#define STR_INT32 12
+
 static int		majorNumber;					// Stores the device number -- determined automatically
-static char		message[256] = {0};				// Memory for the string that is passed from userspace
-static short	sizeOfMessage;					// Used to remember the size of the string stored
+static char		expression_string[256] = {0};	// Memory for the string that is passed from userspace
+static char		result_string[STR_INT32] = {0};	// Memory for the string that is passed to userspace
+static char		firstOperand[STR_INT32] = {0};
+static char		secondOperand[STR_INT32] = {0};
+static char		op;
 static struct	class*  myCalcClass  = NULL;	// The device-driver class struct pointer
 static struct	device* myCalcDevice = NULL;	// The device-driver device struct pointer
 
@@ -121,20 +128,45 @@ static int dev_open(struct inode *inodep, struct file *filep){
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
     int error_count = 0;
     // copy_to_user has the format ( * to, *from, size) and returns 0 on success
-    error_count = copy_to_user(buffer, message, sizeOfMessage);
+    get_result();
+    error_count = copy_to_user(buffer, result_string, strlen(result_string));
 
     if (error_count==0){                // if true then have success
-        printk(KERN_INFO "MyCalc: Sent %d characters to the user\n", sizeOfMessage);
+        printk(KERN_INFO "MyCalc: Sent %d characters to the user\n", strlen(result_string));
         return (sizeOfMessage=0);  // clear the position to the start and return 0
     }
     else {
         printk(KERN_INFO "MyCalc: Failed to send %d characters to the user\n", error_count);
-        return -EFAULT;               // Failed -- return a bad address message (i.e. -14)
+        return -EFAULT;               // Failed -- return a bad address expression_string (i.e. -14)
     }
 }
 
+static void get_result(){
+	int32_t fOp, sOp, result;
+
+	kstrtos32(firstOperand, 10, &fOp);
+	kstrtos32(secondOperand, 10, &sOp);
+
+	switch(op){
+		case '+':
+			result = fOp + sOp;
+			break;
+		case '-':
+           	result = fOp - sOp;
+           	break;
+		case '*':
+			result = fOp * sOp;
+			break;
+		case '/':
+           	result = fOp / sOp;
+           	break;
+	}
+
+	sprintf(result_string, "%d", result);
+}
+
 /** @brief This function is called whenever the device is being written to from user space i.e.
- *  data is sent to the device from the user. The data is copied to the message[] array in this
+ *  data is sent to the device from the user. The data is copied to the expression_string[] array in this
  *  LKM using the sprintf() function along with the length of the string.
  *  @param filep A pointer to a file object
  *  @param buffer The buffer to that contains the string to write to the device
@@ -142,10 +174,34 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
  *  @param offset The offset if required
  */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset){
-    sprintf(message, "%s (%zu chars)", buffer, len);    // appending received string with its length
-    sizeOfMessage = strlen(message);                    // store the length of the stored message
+    strcpy(expression_string, buffer);
+	set_data();
+
     printk(KERN_INFO "MyCalc: Received %zu characters from the user\n", len);
     return len;
+}
+
+
+static void set_data(){
+	int i = 0;
+
+	// The first char may be a signal or digit.
+	// If it's a signal it will cause some trouble
+	// with the for loop...
+	firstOperand[i] = expression_string[i];
+
+	for(i; isdigit(expression_string[i]); i++)
+		firstOperand[i] = expression_string[i];
+
+	firstOperand[i]='\0';
+	op = expression_string[i++];
+
+	for(i; expression_string[i]!='\0'; i++)
+    	secondOperand[i] = expression_string[i];
+
+    secondOperand[i]='\0';
+
+	printk(KERN_INFO "Expression: %s %c %s\n", firstOperand, op, secondOperand);
 }
 
 /** @brief The device release function that is called whenever the device is closed/released by
