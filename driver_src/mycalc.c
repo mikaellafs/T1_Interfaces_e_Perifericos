@@ -6,6 +6,7 @@
 #include <linux/uaccess.h>			// Required for the copy to user function
 #include <linux/mutex.h>			// Required for the mutex functionality
 #include <linux/ctype.h>			// Help handling input
+#include <linux/types.h>			// Required for int32_t
 
 #define  DEVICE_NAME "mycalc"		// The device will appear at /dev/mycalc using this value
 #define  CLASS_NAME  "char"			// The device class -- this is a character device driver
@@ -26,20 +27,16 @@ static char		op;
 static struct	class*  myCalcClass  = NULL;	// The device-driver class struct pointer
 static struct	device* myCalcDevice = NULL;	// The device-driver device struct pointer
 
-static 	DEFINE_MUTEX(myCalcMutex);				// A macro that is used to declare a new mutex that is visible in this file
-												// results in a semaphore variable myCalcMutex with value 1 (unlocked)
-												// DEFINE_MUTEX_LOCKED() results in a variable with value 0 (locked)
+static 	DEFINE_MUTEX(myCalcMutex);
 
-// The prototype functions for the character driver -- must come before the struct definition
+static void get_result(void);
+static void set_data(void);
+
 static int		dev_open(struct inode *, struct file *);
 static int		dev_release(struct inode *, struct file *);
 static ssize_t	dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t	dev_write(struct file *, const char *, size_t, loff_t *);
 
-/** @brief Devices are represented as file structure in the kernel. The file_operations structure from
- *  /linux/fs.h lists the callback functions that you wish to associated with your file operations
- *  using a C99 syntax structure. char devices usually implement open, read, write and release calls
- */
 static struct file_operations fops =
 {
     .open = dev_open,
@@ -48,12 +45,6 @@ static struct file_operations fops =
     .release = dev_release,
 };
 
-/** @brief The LKM initialization function
- *  The static keyword restricts the visibility of the function to within this C file. The __init
- *  macro means that for a built-in driver (not a LKM) the function is only used at initialization
- *  time and that it can be discarded and its memory freed up after that point.
- *  @return returns 0 if successful
- */
 static int __init mycalc_init(void){
     printk(KERN_INFO "MyCalc: Initializing the MyCalc driver as LKM\n");
 
@@ -89,10 +80,6 @@ static int __init mycalc_init(void){
     return 0;
 }
 
-/** @brief The LKM cleanup function
- *  Similar to the initialization function, it is static. The __exit macro notifies that if this
- *  code is used for a built-in driver (not a LKM) that this function is not required.
- */
 static void __exit mycalc_exit(void){
     mutex_destroy(&myCalcMutex);							// destroy the dynamically-allocated mutex
     device_destroy(myCalcClass, MKDEV(majorNumber, 0));		// remove the device
@@ -102,10 +89,6 @@ static void __exit mycalc_exit(void){
     printk(KERN_INFO "MyCalc: Goodbye!\n");
 }
 
-/** @brief The device open function that is called each time the device is opened
- *  @param inodep A pointer to an inode object (defined in linux/fs.h)
- *  @param filep A pointer to a file object (defined in linux/fs.h)
- */
 static int dev_open(struct inode *inodep, struct file *filep){
 	if(!mutex_trylock(&myCalcMutex)){
 		// Try to acquire the mutex (i.e., put the lock on/down)
@@ -116,14 +99,6 @@ static int dev_open(struct inode *inodep, struct file *filep){
 	return 0;
 }
 
-/** @brief This function is called whenever device is being read from user space i.e. data is
- *  being sent from the device to the user. In this case is uses the copy_to_user() function to
- *  send the buffer string to the user and captures any errors.
- *  @param filep A pointer to a file object (defined in linux/fs.h)
- *  @param buffer The pointer to the buffer to which this function writes the data
- *  @param len The length of the b
- *  @param offset The offset if required
- */
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
     int error_count = 0;
     // copy_to_user has the format ( * to, *from, size) and returns 0 on success
@@ -131,8 +106,8 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     error_count = copy_to_user(buffer, result_string, strlen(result_string));
 
     if (error_count==0){                // if true then have success
-        printk(KERN_INFO "MyCalc: Sent %d characters to the user\n", strlen(result_string));
-        return (sizeOfMessage=0);  // clear the position to the start and return 0
+        printk(KERN_INFO "MyCalc: Sent %ld characters to the user\n", strlen(result_string));
+        return 0;  // clear the position to the start and return 0
     }
     else {
         printk(KERN_INFO "MyCalc: Failed to send %d characters to the user\n", error_count);
@@ -140,11 +115,11 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     }
 }
 
-static void get_result(){
+static void get_result(void){
 	int fOp, sOp, result;
 
-	kstrtosint(firstOperand, 10, &fOp);
-	kstrtosint(secondOperand, 10, &sOp);
+	kstrtoint(firstOperand, 10, &fOp);
+	kstrtoint(secondOperand, 10, &sOp);
 
 	switch(op){
 		case '+':
@@ -164,14 +139,6 @@ static void get_result(){
 	sprintf(result_string, "%d", result);
 }
 
-/** @brief This function is called whenever the device is being written to from user space i.e.
- *  data is sent to the device from the user. The data is copied to the expression_string[] array in this
- *  LKM using the sprintf() function along with the length of the string.
- *  @param filep A pointer to a file object
- *  @param buffer The buffer to that contains the string to write to the device
- *  @param len The length of the array of data that is being passed in the const char buffer
- *  @param offset The offset if required
- */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset){
     strcpy(expression_string, buffer);
 	set_data();
@@ -180,8 +147,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
     return len;
 }
 
-
-static void set_data(){
+static void set_data(void){
 	int i = 0;
 
 	// The first char may be a signal or digit.
@@ -189,34 +155,27 @@ static void set_data(){
 	// with the for loop...
 	firstOperand[i] = expression_string[i];
 
-	for(i; isdigit(expression_string[i]); i++)
+	for(; isdigit(expression_string[i]); i++){
 		firstOperand[i] = expression_string[i];
+	}
 
 	firstOperand[i]='\0';
 	op = expression_string[i++];
 
-	for(i; expression_string[i]!='\0'; i++)
-    	secondOperand[i] = expression_string[i];
+	for(; expression_string[i]!='\0'; i++){
+		secondOperand[i] = expression_string[i];
+	}
 
     secondOperand[i]='\0';
 
 	printk(KERN_INFO "Expression: %s %c %s\n", firstOperand, op, secondOperand);
 }
 
-/** @brief The device release function that is called whenever the device is closed/released by
- *  the userspace program
- *  @param inodep A pointer to an inode object (defined in linux/fs.h)
- *  @param filep A pointer to a file object (defined in linux/fs.h)
- */
 static int dev_release(struct inode *inodep, struct file *filep){
     mutex_unlock(&myCalcMutex);          // Releases the mutex (i.e., the lock goes up)
     printk(KERN_INFO "MyCalc: Device successfully closed!\n");
     return 0;
 }
 
-/** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
- *  identify the initialization function at insertion time and the cleanup function (as
- *  listed above)
- */
 module_init(mycalc_init);
 module_exit(mycalc_exit);

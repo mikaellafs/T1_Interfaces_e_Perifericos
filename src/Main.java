@@ -8,10 +8,13 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 public class Main {
     public static void main(String[] args) {
 
+        // TODO: Imprimir "instruções" de uso...
+
         boolean flag = true;
 
         do{
             try {
+                System.out.println("Insira uma expressão aritmetica válida:");
                 var reader = new BufferedReader(new InputStreamReader(System.in));
                 var lexer = new ArithmeticLexer(CharStreams.fromString(reader.readLine()));
                 var parser = new ArithmeticParser(new CommonTokenStream(lexer));
@@ -25,10 +28,14 @@ public class Main {
                 var expr = getExpression(expressionContext);
                 System.out.println(expr);
 
-                // Pra testar a concorrencia da pra pedir uma confirmação aqui.
-                // Tipo pedir pra pressionar enter...
+                // TODO: Verificar se os números são realmente 32 bits...
+                // TODO: Fazer o acesso ao driver e passar a expressão...
 
-                // Deve ser sempre a ultima coisa a ser feita
+                // Pra testar a concorrencia da pra pedir uma confirmação aqui,
+                // tipo pedir pra pressionar enter
+                // e dps abrir outra instancia do programa.
+
+                // A alteração dessa flag deve ser sempre a ultima feita
                 flag = false;
             } catch (ParseCancellationException e){
                 System.out.println("Incorrect input!");
@@ -39,7 +46,6 @@ public class Main {
         }while(flag);
     }
 
-    // Só pra teste
     private static Expression getExpression (ArithmeticParser.ExpressionContext expr) {
         var numberExpressionList = expr.numberExpression();
 
@@ -58,7 +64,6 @@ public class Main {
     }
 }
 
-// Só pra teste
 class Expression{
     public final String firstOperand, secondOperand, operation;
 
@@ -70,10 +75,8 @@ class Expression{
 
     @Override
     public String toString() {
-        return "Expression{" +
-                "firstOperand='" + firstOperand + '\'' +
-                ", secondOperand='" + secondOperand + '\'' +
-                ", operation='" + operation + '\'' +
-                '}';
+        return firstOperand
+                + operation
+                + secondOperand;
     }
 }
