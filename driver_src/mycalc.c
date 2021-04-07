@@ -148,7 +148,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 }
 
 static void set_data(void){
-	int i = 0;
+	int32_t i = 0;
 
 	// The first char may be a signal or digit.
 	// If it's a signal it will cause some trouble
